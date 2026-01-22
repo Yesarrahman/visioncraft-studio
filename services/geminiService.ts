@@ -50,11 +50,44 @@ export class GeminiService {
   }
 
   /**
-   * Generates an environment-only background plate.
+   * Generates an environment-only background plate with context-aware lighting and atmosphere.
    */
   static async generateBackground(scenario: string, category: ProductCategory): Promise<string | undefined> {
     const ai = this.getAI();
-    const prompt = `4K professional background-only photograph for a ${category} brand. Scenario: ${scenario}. ABSOLUTELY NO PEOPLE, MODELS, OR PRODUCTS. Empty space for product placement. Sharp, wide-angle.`;
+    
+    // Dynamic prompt enhancement based on scenario keywords and category
+    let styleCues = "";
+    const lowerScenario = scenario.toLowerCase();
+    
+    if (lowerScenario.includes("studio") || lowerScenario.includes("minimalist")) {
+      styleCues = "Clean, diffused studio lighting, soft shadows, high-key or low-key atmosphere, focus on smooth surfaces like silk, satin, or polished concrete.";
+    } else if (lowerScenario.includes("heritage") || lowerScenario.includes("palace") || lowerScenario.includes("royal")) {
+      styleCues = "Warm ambient lighting, intricate architectural details, wood or marble textures, opulent atmosphere, deep shadows, and golden hour highlights.";
+    } else if (lowerScenario.includes("outdoor") || lowerScenario.includes("nature") || lowerScenario.includes("desert") || lowerScenario.includes("street")) {
+      styleCues = "Natural directional lighting, cinematic weather cues, environmental textures like sand, asphalt, or foliage, organic bokeh in the background.";
+    }
+
+    const categoryCues: Record<ProductCategory, string> = {
+      [ProductCategory.JEWELRY]: "Elegant macro textures, surfaces optimized for jewelry placement (velvet, marble, or polished stone), high specular highlight potential.",
+      [ProductCategory.RESTAURANT]: "Tabletop focus, hospitality-grade textures (linen, wood, slate), inviting depth of field, optimized for plate or glassware placement.",
+      [ProductCategory.FASHION]: "Wide architectural lines, urban or runway textures, optimized for full-body or garment placement, editorial framing."
+    };
+
+    const prompt = `
+      TASK: Generate a 4K professional environment-only photograph for a ${category} campaign.
+      SCENARIO: ${scenario}.
+      STYLE CUES: ${styleCues}
+      CATEGORY SPECIFICS: ${categoryCues[category]}
+      
+      CRITICAL CONSTRAINTS:
+      1. ABSOLUTELY NO PEOPLE, NO MODELS, NO PRODUCTS.
+      2. THE IMAGE MUST BE AN EMPTY BACKGROUND PLATE.
+      3. PROVIDE AMPLE EMPTY SPACE (NEGATE SPACE) specifically for product placement.
+      4. COMPOSITION: Professional photography, sharp 4K resolution, cinematic wide-angle lens (24mm style).
+      
+      QUALITY: Ultra-HD, Ray-traced lighting, photorealistic textures.
+    `;
+
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3-pro-image-preview',
@@ -66,7 +99,23 @@ export class GeminiService {
           if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
         }
       }
-    } catch { return undefined; }
+    } catch (err) {
+      console.warn("Enhanced background generation failed, attempting simple fallback.", err);
+      // Minimal fallback prompt
+      try {
+        const fallback = await ai.models.generateContent({
+          model: 'gemini-2.5-flash-image',
+          contents: `Empty background plate for ${category}, ${scenario} style. No products, no people.`
+        });
+        if (fallback.candidates?.[0]?.content?.parts) {
+          for (const part of fallback.candidates[0].content.parts) {
+            if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
+          }
+        }
+      } catch (fallbackErr) {
+        return undefined;
+      }
+    }
   }
 
   /**
