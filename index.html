@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VisionCraft Studio - Luxury Jewelry Rendering</title>
+    <title>VisionCraft Studio - Luxury AI Rendering</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,14 +16,14 @@
         theme: {
           extend: {
             colors: {
-              charchar: '#0A0A0C',
+              charchar: '#08080A',
               indigo: {
                 500: '#5B6CFF',
                 600: '#4A5AE6',
               },
               softwhite: '#F8F9FA',
               coolgray: '#8E9196',
-              slateborder: '#1A1C23',
+              slateborder: '#16181D',
             },
             fontFamily: {
               sans: ['"Plus Jakarta Sans"', 'sans-serif'],
@@ -36,26 +36,41 @@
     <style>
       body {
         font-family: "Plus Jakarta Sans", sans-serif;
-        background-color: #0A0A0C;
+        background-color: #08080A;
         color: #F8F9FA;
+        margin: 0;
+        -webkit-font-smoothing: antialiased;
       }
       .font-serif {
         font-family: "Playfair Display", serif !important;
       }
       .text-glow {
-        text-shadow: 0 0 20px rgba(91, 108, 255, 0.3);
+        text-shadow: 0 0 20px rgba(91, 108, 255, 0.25);
       }
-      .luxury-card {
-        background: rgba(26, 28, 35, 0.4);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+      .glass-card {
+        background: rgba(22, 24, 29, 0.4);
+        backdrop-filter: blur(24px);
+        border: 1px solid rgba(255, 255, 255, 0.04);
       }
-      @keyframes slideUp {
-        from { opacity: 0; transform: translateY(30px); }
+      @keyframes reveal {
+        from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
       }
-      .animate-luxury {
-        animation: slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      .animate-reveal {
+        animation: reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      .gradient-border {
+        position: relative;
+        background: #16181D;
+        border-radius: 1.5rem;
+      }
+      .gradient-border::before {
+        content: "";
+        position: absolute;
+        inset: -1px;
+        background: linear-gradient(to bottom right, rgba(91, 108, 255, 0.4), transparent, rgba(255, 255, 255, 0.1));
+        border-radius: 1.5rem;
+        z-index: -1;
       }
     </style>
     <script type="importmap">
