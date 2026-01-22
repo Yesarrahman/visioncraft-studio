@@ -3,9 +3,12 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { ProductCategory } from "../types";
 
 export class GeminiService {
-  // Use process.env.API_KEY directly as per guidelines
   private static getAI() {
-    return new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const key = process.env.API_KEY;
+    if (!key || key === 'undefined' || key.length < 5) {
+      throw new Error("API_KEY_MISSING");
+    }
+    return new GoogleGenAI({ apiKey: key });
   }
 
   /**
@@ -55,7 +58,6 @@ export class GeminiService {
   static async generateBackground(scenario: string, category: ProductCategory): Promise<string | undefined> {
     const ai = this.getAI();
     
-    // Dynamic prompt enhancement based on scenario keywords and category
     let styleCues = "";
     const lowerScenario = scenario.toLowerCase();
     
@@ -101,9 +103,9 @@ export class GeminiService {
       }
     } catch (err) {
       console.warn("Enhanced background generation failed, attempting simple fallback.", err);
-      // Minimal fallback prompt
       try {
-        const fallback = await ai.models.generateContent({
+        const fallbackAi = this.getAI();
+        const fallback = await fallbackAi.models.generateContent({
           model: 'gemini-2.5-flash-image',
           contents: `Empty background plate for ${category}, ${scenario} style. No products, no people.`
         });
@@ -136,7 +138,6 @@ export class GeminiService {
 
       try {
         const bgPromise = this.generateBackground(scenario, category);
-        // Create new AI instance right before making an API call
         const ai = this.getAI();
         const response = await ai.models.generateContent({
           model: 'gemini-3-pro-image-preview',
@@ -149,8 +150,8 @@ export class GeminiService {
           }
         }
         bgUrl = await bgPromise;
-      } catch {
-        // Fallback for speed/stability - creating new instance for fallback as well
+      } catch (err: any) {
+        if (err.message === "API_KEY_MISSING") throw err;
         const fallbackAi = this.getAI();
         const fallback = await fallbackAi.models.generateContent({
           model: 'gemini-2.5-flash-image',
