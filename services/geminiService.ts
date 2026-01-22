@@ -3,132 +3,109 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { ProductCategory } from "../types";
 
 export class GeminiService {
+  // Use process.env.API_KEY directly as per guidelines
   private static getAI() {
-    const apiKey = process.env.API_KEY || '';
-    return new GoogleGenAI({ apiKey });
+    return new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
   /**
-   * Generates 3 diverse, high-fidelity creative scenarios based on the product and category.
+   * Generates 3 distinct creative scenarios for the campaign.
    */
   static async generateScenarios(assetBase64: string, brief: string, category: ProductCategory): Promise<string[]> {
     const ai = this.getAI();
     const cleanedBase64 = assetBase64.replace(/^data:image\/\w+;base64,/, '');
 
     const instructions: Record<ProductCategory, string> = {
-      [ProductCategory.JEWELRY]: `You are a high-end creative director for a luxury jewelry brand. Create 3 distinct, cinematic scenarios. 
-      Scenario 1: High-fashion editorial (e.g., Vogue-style studio with dramatic lighting). 
-      Scenario 2: Royal heritage (e.g., palace balcony, evening glow). 
-      Scenario 3: Modern minimalist (e.g., architectural concrete, soft natural light). 
-      Ensure descriptions are vivid and contrast with each other.`,
-      
-      [ProductCategory.RESTAURANT]: `You are a Michelin-star food stylist and interior photographer. Create 3 distinct scenarios. 
-      Scenario 1: Warm ambient bistro (e.g., candlelight, wooden textures). 
-      Scenario 2: Modern fine dining (e.g., white marble, minimalist plating, bright airy lighting). 
-      Scenario 3: Cultural heritage (e.g., traditional courtyard, rich cultural artifacts).`,
-      
-      [ProductCategory.FASHION]: `You are a visionary fashion editor for an elite magazine. Create 3 distinct scenarios. 
-      Scenario 1: Street-style Tokyo/Paris (e.g., neon reflections, urban motion). 
-      Scenario 2: High-end runway (e.g., dramatic stage lights, minimalist background). 
-      Scenario 3: Nature-infused editorial (e.g., desert dunes, golden hour, flowing fabrics).`
+      [ProductCategory.JEWELRY]: `Creative Director at a luxury house. Generate 3 scenarios: 1. High-contrast studio. 2. Heritage palace interior. 3. Minimalist architectural concrete. Diversity in lighting is key.`,
+      [ProductCategory.RESTAURANT]: `Michelin-star food stylist. Generate 3 scenarios: 1. Warm candlelit bistro. 2. Modern marble fine-dining. 3. Rustic organic courtyard.`,
+      [ProductCategory.FASHION]: `Vogue-tier fashion editor. Generate 3 scenarios: 1. Neon Tokyo street. 2. High-end minimal runway. 3. Desert dunes at sunset.`
     };
 
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: [
-          {
-            parts: [
-              { inlineData: { data: cleanedBase64, mimeType: 'image/png' } },
-              { text: `Category: ${category}. User Preference: ${brief}. Generate 3 DIVERSE, cinematic scenarios that are visually distinct in lighting, color, and mood.` }
-            ]
-          }
-        ],
+        contents: {
+          parts: [
+            { inlineData: { data: cleanedBase64, mimeType: 'image/png' } },
+            { text: `Category: ${category}. Brief: ${brief}. Output 3 diverse, cinematic scenarios.` }
+          ]
+        },
         config: {
           systemInstruction: instructions[category],
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
             properties: {
-              scenarios: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: "Array of 3 distinct creative scenarios."
-              }
+              scenarios: { type: Type.ARRAY, items: { type: Type.STRING } }
             },
             required: ["scenarios"]
           }
         }
       });
-
       const parsed = JSON.parse(response.text || '{"scenarios": []}');
-      return parsed.scenarios.length >= 3 ? parsed.scenarios.slice(0, 3) : parsed.scenarios;
+      return parsed.scenarios;
     } catch (err) {
-      console.error("Scenario Generation Error:", err);
-      return ["High-Contrast Minimalist Studio", "Exotic Luxury Locale", "Modern Urban Architectural Set"];
+      return ["Minimalist High-Fashion Set", "Luxury Heritage Interior", "Cinematic Urban Context"];
     }
   }
 
   /**
-   * Generates images based on scenarios, ensuring full composition and no cut-offs.
+   * Generates an environment-only background plate.
    */
-  static async generateModelImages(base64: string, scenarios: string[], category: ProductCategory): Promise<{ url: string, scenario: string, base64: string }[]> {
+  static async generateBackground(scenario: string, category: ProductCategory): Promise<string | undefined> {
     const ai = this.getAI();
+    const prompt = `4K professional background-only photograph for a ${category} brand. Scenario: ${scenario}. ABSOLUTELY NO PEOPLE, MODELS, OR PRODUCTS. Empty space for product placement. Sharp, wide-angle.`;
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-pro-image-preview',
+        contents: prompt,
+        config: { imageConfig: { aspectRatio: "3:4", imageSize: "4K" } }
+      });
+      if (response.candidates?.[0]?.content?.parts) {
+        for (const part of response.candidates[0].content.parts) {
+          if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
+        }
+      }
+    } catch { return undefined; }
+  }
+
+  /**
+   * Generates the primary integration image.
+   */
+  static async generateModelImages(base64: string, scenarios: string[], category: ProductCategory): Promise<{ url: string, scenario: string, base64: string, backgroundUrl?: string }[]> {
     const results = [];
     const cleanedBase64 = base64.replace(/^data:image\/\w+;base64,/, '');
 
     for (const scenario of scenarios) {
-      const categoryPrompts: Record<ProductCategory, string> = {
-        [ProductCategory.JEWELRY]: `MASTER MACRO PHOTOGRAPHY. Sub-millimeter precision. Every stone facet must be ray-traced and sharp. Zero blur on the jewelry. Sparkling highlights and fire refraction.`,
-        [ProductCategory.RESTAURANT]: `ULTRA-HD FOOD STYLING. Glistening textures, realistic condensation, vibrant saturation. Tableware and background must feel luxurious and complete.`,
-        [ProductCategory.FASHION]: `EDITORIAL FASHION MASTERPIECE. Micro-fabric textures. Professional model with high-frequency skin detail. The garment must flow naturally and be the focal point.`
-      };
-
-      const prompt = `REFERENCE ASSET: The provided image. 
-      TASK: Integrate this EXACT asset into a 4K professional photograph.
-      SCENARIO: ${scenario}.
-      
-      CRITICAL COMPOSITION RULES:
-      1. FULL FRAME VISIBILITY: The entire subject and its context must be fully contained within the frame. DO NOT crop the product or the model's head/limbs unless specified. Ensure a balanced, centered, or artistically wide composition.
-      2. ASSET INTEGRITY: Keep the asset's geometry and color 100% identical to the reference but rendered in the scene's lighting.
-      3. ZERO BLUR ON ASSET: The product asset MUST be the sharpest part of the image. Use deep focus for the product and soft bokeh for the distant background.
-      
-      ${categoryPrompts[category]}
-      QUALITY: 4K Ultra-HD, Cinematic, Professional Grade, No Artifacts, Complete Scene.`;
+      const prompt = `REFERENCE: Provided image. SCENARIO: ${scenario}.
+      ANTI-CROP RULES: Use a wide-angle composition. Ensure the entire subject and all limbs/edges of the product are FULLY within the frame. No cut-offs.
+      FOCUS: The product must be crystalline sharp (4K macro). 
+      LIGHTING: Professional ray-traced shadows and highlights.`;
 
       let base64Data = '';
+      let bgUrl: string | undefined = undefined;
+
       try {
+        const bgPromise = this.generateBackground(scenario, category);
+        // Create new AI instance right before making an API call
+        const ai = this.getAI();
         const response = await ai.models.generateContent({
           model: 'gemini-3-pro-image-preview',
-          contents: {
-            parts: [
-              { inlineData: { data: cleanedBase64, mimeType: 'image/png' } },
-              { text: prompt }
-            ]
-          },
-          config: {
-            imageConfig: { aspectRatio: "3:4", imageSize: "4K" }
-          }
+          contents: { parts: [{ inlineData: { data: cleanedBase64, mimeType: 'image/png' } }, { text: prompt }] },
+          config: { imageConfig: { aspectRatio: "3:4", imageSize: "4K" } }
         });
-
         if (response?.candidates?.[0]?.content?.parts) {
           for (const part of response.candidates[0].content.parts) {
-            if (part.inlineData) {
-              base64Data = part.inlineData.data;
-              break;
-            }
+            if (part.inlineData) base64Data = part.inlineData.data;
           }
         }
-      } catch (err) {
-        console.warn("High-fidelity model failed, attempting fallback...");
-        const fallback = await ai.models.generateContent({
+        bgUrl = await bgPromise;
+      } catch {
+        // Fallback for speed/stability - creating new instance for fallback as well
+        const fallbackAi = this.getAI();
+        const fallback = await fallbackAi.models.generateContent({
           model: 'gemini-2.5-flash-image',
-          contents: {
-            parts: [
-              { inlineData: { data: cleanedBase64, mimeType: 'image/png' } },
-              { text: prompt + " (Ensure full body and product visibility, no cropping)" }
-            ]
-          },
+          contents: { parts: [{ inlineData: { data: cleanedBase64, mimeType: 'image/png' } }, { text: prompt + " (Strictly wide-angle)" }] },
           config: { imageConfig: { aspectRatio: "3:4" } }
         });
         if (fallback?.candidates?.[0]?.content?.parts) {
@@ -139,55 +116,25 @@ export class GeminiService {
       }
 
       if (base64Data) {
-        results.push({
-          url: `data:image/png;base64,${base64Data}`,
-          scenario,
-          base64: base64Data
-        });
+        results.push({ url: `data:image/png;base64,${base64Data}`, scenario, base64: base64Data, backgroundUrl: bgUrl });
       }
     }
-
     return results;
   }
 
-  /**
-   * Refines the image with granular control over detail, sparkle, and sharpness.
-   */
   static async editImage(originalBase64: string, editPrompt: string): Promise<string> {
     const ai = this.getAI();
     const cleanedBase64 = originalBase64.replace(/^data:image\/\w+;base64,/, '');
-    
-    // Injecting granular refinement logic into the prompt
-    const refinementInstructions = `
-    Analyze the current image and apply the following modifications: ${editPrompt}.
-    
-    GRANULAR REFINEMENT STANDARDS:
-    - IF SHARPNESS IS REQUESTED: Increase edge definition and local contrast. Reconstruct blurred textures with high-frequency detail.
-    - IF TEXTURE IS REQUESTED: Elevate the micro-detail of metal, fabric, or food surfaces. Ensure every pore or thread is visible.
-    - IF SPARKLE/GEMS REQUESTED: Add spectral highlights, ray-traced light dispersion, and brilliant internal reflections to stones or glossy surfaces.
-    
-    MAINTAIN: Scene lighting consistency and asset geometry. Ensure the entire composition remains fully visible and professional.
-    `;
-
+    const prompt = `Refine image: ${editPrompt}. RECONSTRUCT FOCAL SHARPNESS. Ensure all facets and textures are 4K crystalline. Do not crop the subject.`;
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
-      contents: {
-        parts: [
-          { inlineData: { data: cleanedBase64, mimeType: 'image/png' } },
-          { text: refinementInstructions }
-        ]
-      }
+      contents: { parts: [{ inlineData: { data: cleanedBase64, mimeType: 'image/png' } }, { text: prompt }] }
     });
-
-    let base64Data = '';
-    if (response?.candidates?.[0]?.content?.parts) {
+    if (response.candidates?.[0]?.content?.parts) {
       for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) {
-          base64Data = part.inlineData.data;
-          break;
-        }
+        if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
       }
     }
-    return `data:image/png;base64,${base64Data}`;
+    throw new Error("Refinement failed.");
   }
 }

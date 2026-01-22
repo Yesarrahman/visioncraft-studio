@@ -4,6 +4,7 @@ export interface GeneratedImage {
   url: string;
   scenario: string;
   base64: string;
+  backgroundUrl?: string;
 }
 
 export enum AppState {
