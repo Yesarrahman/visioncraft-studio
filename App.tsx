@@ -34,7 +34,7 @@ export default function App() {
   useEffect(() => { checkApiKey(); }, []);
 
   const checkApiKey = async () => {
-    // 1. Check if the AI Studio window shim exists (Preview Environment)
+    // Priority 1: Check if the AI Studio window shim exists
     // @ts-ignore
     const isAiStudio = typeof window.aistudio !== 'undefined';
     
@@ -47,11 +47,11 @@ export default function App() {
         setHasKey(true);
       }
     } else {
-      // 2. Check for the Netlify environment variable
+      // Priority 2: Check for the Netlify environment variable
+      // In production, process.env.API_KEY is replaced during build time
       const envKey = process.env.API_KEY;
-      const isKeyValid = envKey && envKey !== 'undefined' && envKey.length > 5;
+      const isKeyValid = envKey && envKey !== 'undefined' && envKey !== '' && envKey.length > 10;
       
-      // If no environment key is found, we show the "Configure Key" screen
       setHasKey(!!isKeyValid);
     }
   };
@@ -61,10 +61,10 @@ export default function App() {
     if (typeof window.aistudio !== 'undefined') {
       // @ts-ignore
       await window.aistudio.openSelectKey();
+      // Assume success as per guidelines to avoid race conditions
       setHasKey(true);
     } else {
-      // If we're on Netlify and still have no key, prompt the user about environment variables
-      alert("No API Key detected in Netlify environment variables. Please check your 'Site settings > Environment variables' and redeploy.");
+      alert("KEY CONFIGURATION ERROR:\n1. In Netlify, ensure the variable name is exactly 'API_KEY' (not the value itself).\n2. After saving, you MUST trigger a 'Clear cache and deploy site' from the Deploys tab.");
     }
   };
 
@@ -99,11 +99,11 @@ export default function App() {
       setGeneratedImages(results.map((r, i) => ({ ...r, id: `${Date.now()}-${i}` })));
       setAppState(AppState.VIEWING);
     } catch (err: any) {
-      console.error(err);
+      console.error("API Error:", err);
       if (err.message === "API_KEY_MISSING") {
         setHasKey(false);
       } else {
-        alert(err.message || "Rendering pipeline disrupted.");
+        alert(err.message || "An unexpected error occurred during rendering.");
       }
       setAppState(AppState.VIEWING);
     }
@@ -130,10 +130,29 @@ export default function App() {
   if (hasKey === false) {
     return (
       <div className="min-h-screen bg-charchar flex flex-col items-center justify-center p-10 text-center">
-        <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center mb-8"><svg className="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg></div>
+        <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center mb-8">
+          <svg className="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
         <h2 className="text-3xl font-serif font-bold text-softwhite mb-4">Pipeline Authentication Required</h2>
-        <p className="text-coolgray mb-8 max-w-sm">No valid API Key detected. If you just added it to Netlify, please trigger a <strong>new deploy</strong> with <strong>cleared cache</strong>.</p>
-        <button onClick={handleSelectKey} className="bg-indigo-500 text-white px-10 py-5 rounded-xl font-black uppercase tracking-widest text-[11px] hover:bg-indigo-600 shadow-2xl">Configure Key</button>
+        <div className="text-coolgray mb-8 max-w-lg space-y-4 text-sm leading-relaxed">
+          <p>The system could not detect a valid <strong>API_KEY</strong>.</p>
+          <div className="bg-slateborder/30 p-6 rounded-2xl border border-slateborder text-left space-y-3">
+            <p className="font-bold text-softwhite flex items-center gap-2">
+              <span className="w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center text-[10px]">1</span>
+              Correct Netlify Variable
+            </p>
+            <p className="pl-7 opacity-80">In Netlify settings, set the <strong>Key</strong> to exactly <code className="bg-indigo-500/20 text-indigo-400 px-1 rounded">API_KEY</code> and the <strong>Value</strong> to your actual Gemini key.</p>
+            
+            <p className="font-bold text-softwhite flex items-center gap-2">
+              <span className="w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center text-[10px]">2</span>
+              Trigger New Deploy
+            </p>
+            <p className="pl-7 opacity-80">After saving, go to the <strong>Deploys</strong> tab and select <strong>Trigger deploy &gt; Clear cache and deploy site</strong>.</p>
+          </div>
+        </div>
+        <button onClick={handleSelectKey} className="bg-indigo-500 text-white px-10 py-5 rounded-xl font-black uppercase tracking-widest text-[11px] hover:bg-indigo-600 shadow-2xl transition-all">Check Configuration</button>
       </div>
     );
   }
