@@ -1,0 +1,7 @@
+{
+  "name": "VisionCraft Studio",
+  "description": "Professional enterprise-grade AI visualization platform for high-fidelity product rendering and scene integration.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
