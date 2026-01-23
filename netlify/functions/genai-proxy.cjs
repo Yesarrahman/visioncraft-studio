@@ -4,7 +4,13 @@ module.exports.handler = async function (event) {
         const isDevFallback = !apiKey;
         if (isDevFallback) console.warn('API_KEY not set — running in development fallback mode');
 
-        const body = event.body ? JSON.parse(event.body) : {};
+        let body = {};
+        try {
+            body = typeof event.body === 'string' ? JSON.parse(event.body) : (event.body || {});
+        } catch (e) {
+            console.error('Body parse error', String(event.body), e);
+            body = {};
+        }
         const { action, payload } = body;
 
         // handle lightweight ping without importing large SDK
@@ -58,7 +64,7 @@ module.exports.handler = async function (event) {
                     // fallback: split by lines and take first 3 non-empty
                 }
                 if (!scenarios.length) {
-                    scenarios = content.split(/\n+/).map(s => s.replace(/^\d+\.?\s*/, '').trim()).filter(Boolean).slice(0,3);
+                    scenarios = content.split(/\n+/).map(s => s.replace(/^\d+\.?\s*/, '').trim()).filter(Boolean).slice(0, 3);
                 }
                 return { statusCode: 200, body: JSON.stringify({ scenarios }) };
             } catch (err) {
