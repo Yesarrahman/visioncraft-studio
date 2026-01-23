@@ -4,11 +4,12 @@ import { ProductCategory } from "../types";
 
 export class GeminiService {
   private static getAI() {
+    // The key must be obtained exclusively from process.env.API_KEY
     const key = process.env.API_KEY;
-    if (!key) {
-      console.warn("VisionCraft: API_KEY not found in environment. Please ensure it is set in Netlify.");
+    if (!key || key.trim() === "") {
+      throw new Error("API_KEY_MISSING");
     }
-    return new GoogleGenAI({ apiKey: key || '' });
+    return new GoogleGenAI({ apiKey: key });
   }
 
   static async generateScenarios(assetBase64: string, brief: string, category: ProductCategory): Promise<string[]> {
@@ -16,7 +17,7 @@ export class GeminiService {
     const cleanedBase64 = assetBase64.replace(/^data:image\/\w+;base64,/, '');
 
     const systemInstructions: Record<ProductCategory, string> = {
-      [ProductCategory.JEWELRY]: "You are a Creative Director for a high-end luxury jewelry house. Your task is to propose 3 distinct, cinematic visual environments for a piece of jewelry. Scenarios must be diverse: 1. Architectural Minimalist. 2. Heritage Luxury. 3. Contemporary Editorial. Focus on lighting and texture. Be descriptive but concise.",
+      [ProductCategory.JEWELRY]: "You are a Creative Director for a high-end luxury jewelry house. Your task is to propose 3 distinct, cinematic visual environments for a piece of jewelry. Scenarios must be diverse: 1. Architectural Minimalist. 2. Heritage Luxury. 3. Contemporary Editorial. Focus on lighting and texture. Output strictly JSON.",
       [ProductCategory.RESTAURANT]: "You are a Michelin-star hospitality designer. Propose 3 distinct dining atmospheres for this product: 1. Midnight Intimacy. 2. Bright Organic. 3. Industrial Avant-Garde.",
       [ProductCategory.FASHION]: "You are a lead editor at a global fashion magazine. Propose 3 editorial scenarios: 1. Urban Brutalism. 2. Desert High-Fashion. 3. Retro-Futurist Studio."
     };
@@ -27,7 +28,7 @@ export class GeminiService {
         contents: {
           parts: [
             { inlineData: { data: cleanedBase64, mimeType: 'image/png' } },
-            { text: `Analyze this ${category} product. Brief: ${brief}. Output 3 highly descriptive scenarios.` }
+            { text: `Analyze this ${category} product asset. User Brief: ${brief}. Propose 3 cinematic render environments.` }
           ]
         },
         config: {
@@ -43,9 +44,10 @@ export class GeminiService {
         }
       });
       const parsed = JSON.parse(response.text || '{"scenarios": []}');
-      return parsed.scenarios.length > 0 ? parsed.scenarios : ["Minimalist Architectural Studio", "Luxury Heritage Interior", "Cinematic Sunset Terrace"];
+      return parsed.scenarios.length > 0 ? parsed.scenarios : ["Minimalist Studio", "Luxury Boutique", "Sunset Balcony"];
     } catch (err) {
-      console.error("Scenario Generation Error:", err);
+      console.error("Scenario Generation Failed:", err);
+      // Fail-safe defaults for luxury items
       return ["Architectural Minimalist Studio", "High-End Luxury Boutique", "Contemporary Editorial Background"];
     }
   }
@@ -53,19 +55,17 @@ export class GeminiService {
   static async generateModelImages(base64: string, scenarios: string[], category: ProductCategory): Promise<{ url: string, scenario: string, base64: string }[]> {
     const cleanedBase64 = base64.replace(/^data:image\/\w+;base64,/, '');
     
-    // We execute these in parallel for faster studio performance
+    // Create a new instance for each scenario to avoid session conflicts and ensure up-to-date keys
     const renderPromises = scenarios.map(async (scenario) => {
       const prompt = `
-        TASK: High-Fidelity 4K Neural Rendering and Product Integration.
-        PRODUCT CATEGORY: ${category}.
-        ENVIRONMENTAL DIRECTION: ${scenario}.
+        ACT AS: Professional 4K Product Visualizer.
+        TASK: Integrate the provided ${category} asset into a high-fidelity ${scenario} environment.
         
-        VISUAL GUIDELINES:
-        - 4K resolution, macro-level sharpness.
-        - Cinematic lighting with realistic shadows and specular highlights.
-        - The product must be the focal point, perfectly integrated into the lighting of the scene.
-        - Ensure the product remains whole and uncropped.
-        - Use professional product photography composition.
+        CRITICAL CONSTRAINTS:
+        - The product must be the primary focus with ray-traced reflections.
+        - Ensure all edges of the product are preserved and uncropped.
+        - Match the lighting of the product perfectly to the environment.
+        - Output a cinematic, editorial-quality 4K render.
       `;
 
       try {
@@ -105,7 +105,7 @@ export class GeminiService {
         }
         return null;
       } catch (err) {
-        console.error(`Rendering failed for scenario: "${scenario}"`, err);
+        console.error(`Render failed for scenario "${scenario}":`, err);
         return null;
       }
     });
@@ -117,7 +117,7 @@ export class GeminiService {
   static async editImage(originalBase64: string, editPrompt: string): Promise<string> {
     const ai = this.getAI();
     const cleanedBase64 = originalBase64.replace(/^data:image\/\w+;base64,/, '');
-    const prompt = `PERFORM HIGH-END STUDIO REFINE: ${editPrompt}. Maintain 4K clarity. Focus on improving texture, lighting quality, and premium atmospheric depth.`;
+    const prompt = `NEURAL REFINE: ${editPrompt}. Maintain 4K resolution. Enhance metallic luster, shadows, and overall cinematic color grading.`;
     
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-image-preview',
@@ -140,6 +140,6 @@ export class GeminiService {
         if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
       }
     }
-    throw new Error("Neural refinement synthesis failed.");
+    throw new Error("Refinement synthesis failed.");
   }
 }
