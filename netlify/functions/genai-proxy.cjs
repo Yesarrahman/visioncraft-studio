@@ -35,37 +35,36 @@ module.exports.handler = async function (event) {
                 return { statusCode: 200, body: JSON.stringify({ scenarios: samples }) };
             }
 
-            const cleanedBase64 = (assetBase64 || '').replace(/^data:image\/\w+;base64,/, '');
-
-            const systemInstructions = {
-                JEWELRY: "You are a Creative Director for a high-end luxury jewelry house. Propose 3 distinct cinematic visual environments for a piece of jewelry.",
-                RESTAURANT: "You are a Michelin-star hospitality designer. Propose 3 distinct dining atmospheres.",
-                FASHION: "You are a lead editor at a global fashion magazine. Propose 3 editorial scenarios."
-            };
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: {
-                    parts: [
-                        { inlineData: { data: cleanedBase64, mimeType: 'image/png' } },
-                        { text: `Analyze this ${category} product. Brief: ${brief}. Output 3 highly descriptive scenarios.` }
-                    ]
-                },
-                config: {
-                    systemInstruction: systemInstructions[category] || '',
-                    responseMimeType: 'application/json',
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            scenarios: { type: Type.ARRAY, items: { type: Type.STRING } }
-                        },
-                        required: ['scenarios']
+            // Use Google Generative Language REST API to generate text scenarios (avoids SDK import issues)
+            try {
+                const prompt = `You are a creative director. Analyze this ${category} product. Brief: ${brief}. Provide exactly 3 distinct, short, highly descriptive visual scenarios as a JSON object: {"scenarios":["...","...","..."]}`;
+                const endpoint = `https://generativelanguage.googleapis.com/v1beta2/models/text-bison-001:generate?key=${encodeURIComponent(apiKey)}`;
+                const resp = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: { text: prompt }, temperature: 0.2 })
+                });
+                const j = await resp.json();
+                const content = j?.candidates?.[0]?.content || j?.output?.[0]?.content || '';
+                // Try to extract JSON from content
+                let scenarios = [];
+                try {
+                    const maybeJson = content.match(/\{[\s\S]*\}/);
+                    if (maybeJson) {
+                        const parsed = JSON.parse(maybeJson[0]);
+                        scenarios = parsed.scenarios || [];
                     }
+                } catch (e) {
+                    // fallback: split by lines and take first 3 non-empty
                 }
-            });
-
-            const parsed = JSON.parse(response.text || '{"scenarios": []}');
-            return { statusCode: 200, body: JSON.stringify({ scenarios: parsed.scenarios }) };
+                if (!scenarios.length) {
+                    scenarios = content.split(/\n+/).map(s => s.replace(/^\d+\.?\s*/, '').trim()).filter(Boolean).slice(0,3);
+                }
+                return { statusCode: 200, body: JSON.stringify({ scenarios }) };
+            } catch (err) {
+                console.error('Text generation error', err);
+                return { statusCode: 500, body: JSON.stringify({ error: 'Text generation failed', details: String(err) }) };
+            }
         }
 
         if (action === 'generateModelImages') {
