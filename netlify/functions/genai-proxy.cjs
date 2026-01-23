@@ -9,7 +9,7 @@ module.exports.handler = async function (event) {
             body = typeof event.body === 'string' ? JSON.parse(event.body) : (event.body || {});
         } catch (e) {
             console.error('Body parse error', String(event.body), e);
-            body = {};
+            return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON body', raw: String(event.body), details: String(e) }) };
         }
         const { action, payload } = body;
 
