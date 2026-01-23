@@ -1,0 +1,7 @@
+{
+    "name": "netlify-functions",
+    "private": true,
+    "dependencies": {
+        "@google/genai": "^1.38.0"
+    }
+}
