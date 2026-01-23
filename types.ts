@@ -9,7 +9,6 @@ export interface GeneratedImage {
 
 export enum AppState {
   IDLE = 'IDLE',
-  UPLOADING = 'UPLOADING',
   GENERATING = 'GENERATING',
   EDITING = 'EDITING',
   VIEWING = 'VIEWING'
