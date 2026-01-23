@@ -43,7 +43,7 @@ export default function App() {
         }
 
         // If no client-side key, probe the server function to see if API key is configured
-        const probe = await fetch('/.netlify/functions/genai-proxy', {
+        const probe = await fetch('/.netlify/functions/ping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'ping' })
