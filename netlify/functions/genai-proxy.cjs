@@ -19,12 +19,6 @@ module.exports.handler = async function (event) {
         }
 
         let GoogleGenAI, Type, ai;
-        if (!isDevFallback) {
-            const genaiModule = await import('@google/genai');
-            const genai = genaiModule.default ?? genaiModule;
-            ({ GoogleGenAI, Type } = genai);
-            ai = new GoogleGenAI({ apiKey });
-        }
 
         if (action === 'ping') {
             return { statusCode: 200, body: JSON.stringify({ ok: true, mode: isDevFallback ? 'dev' : 'server' }) };
@@ -86,32 +80,44 @@ module.exports.handler = async function (event) {
 
             const cleanedBase64 = (base64 || '').replace(/^data:image\/\w+;base64,/, '');
 
-            for (const scenario of scenarios || []) {
-                const prompt = `TASK: High-Fidelity 4K Neural Integration. PRODUCT: ${category}. ENVIRONMENT: ${scenario}.`;
+            if (!isDevFallback) {
                 try {
-                    const response = await ai.models.generateContent({
-                        model: 'gemini-3-pro-image-preview',
-                        contents: {
-                            parts: [
-                                { inlineData: { data: cleanedBase64, mimeType: 'image/png' } },
-                                { text: prompt }
-                            ]
-                        },
-                        config: { imageConfig: { aspectRatio: '3:4', imageSize: '4K' } }
-                    });
-
-                    let base64Data = '';
-                    if (response?.candidates?.[0]?.content?.parts) {
-                        for (const part of response.candidates[0].content.parts) {
-                            if (part.inlineData) base64Data = part.inlineData.data;
-                        }
-                    }
-
-                    if (base64Data) {
-                        results.push({ url: `data:image/png;base64,${base64Data}`, scenario, base64: base64Data });
-                    }
+                    const genaiModule = await import('@google/genai');
+                    const genai = genaiModule.default ?? genaiModule;
+                    ({ GoogleGenAI, Type } = genai);
+                    ai = new GoogleGenAI({ apiKey });
                 } catch (err) {
-                    console.error('Rendering Error for scenario:', scenario, err);
+                    console.error('Failed to import SDK for image generation', err);
+                    return { statusCode: 500, body: JSON.stringify({ error: 'Image SDK import failed', details: String(err) }) };
+                }
+
+                for (const scenario of scenarios || []) {
+                    const prompt = `TASK: High-Fidelity 4K Neural Integration. PRODUCT: ${category}. ENVIRONMENT: ${scenario}.`;
+                    try {
+                        const response = await ai.models.generateContent({
+                            model: 'gemini-3-pro-image-preview',
+                            contents: {
+                                parts: [
+                                    { inlineData: { data: cleanedBase64, mimeType: 'image/png' } },
+                                    { text: prompt }
+                                ]
+                            },
+                            config: { imageConfig: { aspectRatio: '3:4', imageSize: '4K' } }
+                        });
+
+                        let base64Data = '';
+                        if (response?.candidates?.[0]?.content?.parts) {
+                            for (const part of response.candidates[0].content.parts) {
+                                if (part.inlineData) base64Data = part.inlineData.data;
+                            }
+                        }
+
+                        if (base64Data) {
+                            results.push({ url: `data:image/png;base64,${base64Data}`, scenario, base64: base64Data });
+                        }
+                    } catch (err) {
+                        console.error('Rendering Error for scenario:', scenario, err);
+                    }
                 }
             }
 
@@ -126,6 +132,18 @@ module.exports.handler = async function (event) {
 
             const cleanedBase64 = (originalBase64 || '').replace(/^data:image\/\w+;base64,/, '');
             const prompt = `REFINE RENDER: ${editPrompt}. Maintain 4K resolution and high-fidelity textures.`;
+
+            if (!isDevFallback) {
+                try {
+                    const genaiModule = await import('@google/genai');
+                    const genai = genaiModule.default ?? genaiModule;
+                    ({ GoogleGenAI, Type } = genai);
+                    ai = new GoogleGenAI({ apiKey });
+                } catch (err) {
+                    console.error('Failed to import SDK for editImage', err);
+                    return { statusCode: 500, body: JSON.stringify({ error: 'Image SDK import failed', details: String(err) }) };
+                }
+            }
 
             const response = await ai.models.generateContent({
                 model: 'gemini-3-pro-image-preview',
