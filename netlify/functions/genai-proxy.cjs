@@ -4,6 +4,14 @@ module.exports.handler = async function (event) {
         const isDevFallback = !apiKey;
         if (isDevFallback) console.warn('API_KEY not set — running in development fallback mode');
 
+        const body = event.body ? JSON.parse(event.body) : {};
+        const { action, payload } = body;
+
+        // handle lightweight ping without importing large SDK
+        if (action === 'ping') {
+            return { statusCode: 200, body: JSON.stringify({ ok: true, mode: isDevFallback ? 'dev' : 'server' }) };
+        }
+
         let GoogleGenAI, Type, ai;
         if (!isDevFallback) {
             const genaiModule = await import('@google/genai');
@@ -11,9 +19,6 @@ module.exports.handler = async function (event) {
             ({ GoogleGenAI, Type } = genai);
             ai = new GoogleGenAI({ apiKey });
         }
-
-        const body = event.body ? JSON.parse(event.body) : {};
-        const { action, payload } = body;
 
         if (action === 'ping') {
             return { statusCode: 200, body: JSON.stringify({ ok: true, mode: isDevFallback ? 'dev' : 'server' }) };
