@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VisionCraft Studio - Luxury AI Rendering</title>
+    <title>VisionCraft Studio - 4K Luxury AI Rendering</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,14 +16,14 @@
         theme: {
           extend: {
             colors: {
-              charchar: '#08080A',
+              charchar: '#050507',
               indigo: {
                 500: '#5B6CFF',
                 600: '#4A5AE6',
               },
-              softwhite: '#F8F9FA',
-              coolgray: '#8E9196',
-              slateborder: '#16181D',
+              softwhite: '#F9FAFB',
+              coolgray: '#9CA3AF',
+              slateborder: '#111827',
             },
             fontFamily: {
               sans: ['"Plus Jakarta Sans"', 'sans-serif'],
@@ -34,44 +34,57 @@
       }
     </script>
     <style>
+      :root {
+        --font-serif: "Playfair Display", serif;
+        --font-sans: "Plus Jakarta Sans", sans-serif;
+      }
       body {
-        font-family: "Plus Jakarta Sans", sans-serif;
-        background-color: #08080A;
-        color: #F8F9FA;
+        font-family: var(--font-sans);
+        background-color: #050507;
+        color: #F9FAFB;
         margin: 0;
         -webkit-font-smoothing: antialiased;
       }
-      .font-serif {
-        font-family: "Playfair Display", serif !important;
+      h1, h2, h3, .font-serif {
+        font-family: var(--font-serif) !important;
       }
       .text-glow {
-        text-shadow: 0 0 20px rgba(91, 108, 255, 0.25);
+        text-shadow: 0 0 30px rgba(91, 108, 255, 0.3);
       }
-      .glass-card {
-        background: rgba(22, 24, 29, 0.4);
-        backdrop-filter: blur(24px);
+      .luxury-card {
+        background: rgba(17, 24, 39, 0.4);
+        backdrop-filter: blur(40px);
         border: 1px solid rgba(255, 255, 255, 0.04);
       }
+      .glass-card {
+        background: rgba(17, 24, 39, 0.3);
+        backdrop-filter: blur(30px);
+        border: 1px solid rgba(255, 255, 255, 0.03);
+      }
       @keyframes reveal {
-        from { opacity: 0; transform: translateY(20px); }
+        from { opacity: 0; transform: translateY(30px); }
         to { opacity: 1; transform: translateY(0); }
       }
       .animate-reveal {
-        animation: reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation: reveal 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
       .gradient-border {
         position: relative;
-        background: #16181D;
+        background: #111827;
         border-radius: 1.5rem;
       }
       .gradient-border::before {
         content: "";
         position: absolute;
         inset: -1px;
-        background: linear-gradient(to bottom right, rgba(91, 108, 255, 0.4), transparent, rgba(255, 255, 255, 0.1));
+        background: linear-gradient(to bottom right, rgba(91, 108, 255, 0.5), transparent, rgba(255, 255, 255, 0.1));
         border-radius: 1.5rem;
         z-index: -1;
       }
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: #050507; }
+      ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 10px; }
+      ::-webkit-scrollbar-thumb:hover { background: #5B6CFF; }
     </style>
     <script type="importmap">
     {
@@ -83,8 +96,7 @@
       }
     }
     </script>
-  <link rel="stylesheet" href="/index.css">
-</head>
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
