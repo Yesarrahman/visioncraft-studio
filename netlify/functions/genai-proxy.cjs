@@ -1,4 +1,4 @@
-export const handler = async function (event) {
+module.exports.handler = async function (event) {
     try {
         const apiKey = process.env.API_KEY;
         const isDevFallback = !apiKey;
@@ -6,7 +6,8 @@ export const handler = async function (event) {
 
         let GoogleGenAI, Type, ai;
         if (!isDevFallback) {
-            const { default: genai } = await import('@google/genai');
+            const genaiModule = await import('@google/genai');
+            const genai = genaiModule.default ?? genaiModule;
             ({ GoogleGenAI, Type } = genai);
             ai = new GoogleGenAI({ apiKey });
         }
@@ -14,7 +15,6 @@ export const handler = async function (event) {
         const body = event.body ? JSON.parse(event.body) : {};
         const { action, payload } = body;
 
-        // lightweight health check for front-end to detect server readiness
         if (action === 'ping') {
             return { statusCode: 200, body: JSON.stringify({ ok: true, mode: isDevFallback ? 'dev' : 'server' }) };
         }
@@ -22,7 +22,6 @@ export const handler = async function (event) {
         if (action === 'generateScenarios') {
             const { assetBase64, brief, category } = payload;
             if (isDevFallback) {
-                // Return deterministic sample scenarios for local/dev environments
                 const samples = [
                     `Luxurious studio-lit setting with dramatic chiaroscuro highlighting the ${category} piece.`,
                     `Ultra-minimal gallery space with soft natural window light and reflective surfaces.`,
@@ -68,7 +67,6 @@ export const handler = async function (event) {
             const { base64, scenarios, category } = payload;
             const results = [];
             if (isDevFallback) {
-                // Return placeholder images (single-pixel transparent PNG) for dev
                 const placeholder = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==';
                 for (const scenario of (scenarios || [])) {
                     results.push({ url: `data:image/png;base64,${placeholder}`, scenario, base64: placeholder });
@@ -113,7 +111,6 @@ export const handler = async function (event) {
         if (action === 'editImage') {
             const { originalBase64, editPrompt } = payload;
             if (isDevFallback) {
-                // In dev mode just echo the original image back
                 return { statusCode: 200, body: JSON.stringify({ image: originalBase64 }) };
             }
 
