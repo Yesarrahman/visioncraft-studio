@@ -1,4 +1,4 @@
-exports.handler = async function (event) {
+export const handler = async function (event) {
     try {
         const apiKey = process.env.API_KEY;
         const isDevFallback = !apiKey;
