@@ -37,7 +37,14 @@ module.exports.handler = async function (event) {
 
             // Use Google Generative Language REST API to generate text scenarios (avoids SDK import issues)
             try {
-                const prompt = `You are a creative director. Analyze this ${category} product. Brief: ${brief}. Provide exactly 3 distinct, short, highly descriptive visual scenarios as a JSON object: {"scenarios":["...","...","..."]}`;
+                const prompt = `You are a creative director. Analyze this ${category} product. Brief: ${brief}.
+
+Return ONLY valid JSON with a single top-level object that has a "scenarios" array of exactly 3 short descriptive strings. Do NOT include any explanations, markdown, or extra text — only the JSON object.
+
+Example output:
+{"scenarios":["Studio-lit closeup with dramatic rim light and deep shadows.","Minimalist gallery with soft diffuse window light and reflective surfaces.","Opulent cinematic interior with warm golden highlights and shallow depth-of-field."]}
+
+Produce the JSON now.`;
                 const endpoint = `https://generativelanguage.googleapis.com/v1beta2/models/text-bison-001:generate?key=${encodeURIComponent(apiKey)}`;
                 const resp = await fetch(endpoint, {
                     method: 'POST',
