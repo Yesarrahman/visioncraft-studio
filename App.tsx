@@ -35,13 +35,29 @@ export default function App() {
     // Initial key check using environment-provided aistudio
     const checkKey = async () => {
       try {
+        // First try the client-side integrator (secure key manager)
         const aistudio = (window as any).aistudio;
         if (aistudio && await aistudio.hasSelectedApiKey()) {
           setAppState(AppState.IDLE);
+          return;
         }
+
+        // If no client-side key, probe the server function to see if API key is configured
+        const probe = await fetch('/.netlify/functions/genai-proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'ping' })
+        }).then(r => r.json()).catch(() => null);
+
+        if (probe && probe.ok) {
+          setAppState(AppState.IDLE);
+          return;
+        }
+
+        // Otherwise remain in key selection so user can connect a client key
+        setAppState(AppState.KEY_SELECTION);
       } catch (e) {
-        // Fallback to manual if environment is traditional
-        setAppState(AppState.IDLE);
+        setAppState(AppState.KEY_SELECTION);
       }
     };
     checkKey();
@@ -199,7 +215,7 @@ export default function App() {
                 Concept to <span className="text-indigo-500 italic">Visual.</span>
               </h2>
               <p className="text-2xl text-coolgray max-w-2xl mx-auto font-light leading-relaxed opacity-80">Industrial-grade 4K neural rendering for luxury products, editorial sets, and high-end marketing campaigns.</p>
-              
+
               <div className="flex flex-wrap justify-center gap-5">
                 {[ProductCategory.JEWELRY, ProductCategory.FASHION, ProductCategory.RESTAURANT].map(cat => (
                   <button key={cat} onClick={() => setCategory(cat)} className={`px-12 py-4.5 rounded-2xl text-[11px] font-bold tracking-[0.2em] uppercase transition-all border ${category === cat ? 'bg-indigo-500 border-indigo-500 shadow-2xl text-white' : 'border-slateborder text-coolgray hover:border-indigo-500/30 hover:text-white'}`}>{cat}</button>
@@ -248,17 +264,17 @@ export default function App() {
                       <div className="aspect-[3/4] relative overflow-hidden bg-slateborder/20">
                         <img src={img.url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2000ms] ease-out" />
                         <div className="absolute inset-0 bg-gradient-to-t from-charchar/90 via-charchar/20 to-transparent"></div>
-                        
+
                         {img.backgroundUrl && (
                           <div className="absolute top-10 right-10 w-24 h-32 glass-card rounded-2xl overflow-hidden shadow-2xl scale-0 group-hover:scale-100 transition-transform duration-700 delay-100">
-                             <img src={img.backgroundUrl} className="w-full h-full object-cover" />
-                             <a href={img.backgroundUrl} download={`background-${img.id}.png`} className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-indigo-500/70 transition-opacity"><svg className="w-8 h-8" fill="white" viewBox="0 0 20 20"><path d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" /></svg></a>
+                            <img src={img.backgroundUrl} className="w-full h-full object-cover" />
+                            <a href={img.backgroundUrl} download={`background-${img.id}.png`} className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-indigo-500/70 transition-opacity"><svg className="w-8 h-8" fill="white" viewBox="0 0 20 20"><path d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" /></svg></a>
                           </div>
                         )}
-                        
+
                         <div className="absolute bottom-12 left-12 right-12">
-                           <p className="text-indigo-500 text-[10px] font-black tracking-[0.6em] uppercase mb-4">Neural Plate v3</p>
-                           <p className="text-softwhite text-2xl font-serif italic leading-tight line-clamp-2">"{img.scenario}"</p>
+                          <p className="text-indigo-500 text-[10px] font-black tracking-[0.6em] uppercase mb-4">Neural Plate v3</p>
+                          <p className="text-softwhite text-2xl font-serif italic leading-tight line-clamp-2">"{img.scenario}"</p>
                         </div>
                       </div>
                       <div className="p-12 flex gap-5">
@@ -273,11 +289,11 @@ export default function App() {
           </div>
         )}
       </main>
-      
+
       <footer className="py-40 text-center border-t border-slateborder/20 mt-40">
         <div className="space-y-10 opacity-30 group cursor-default">
-           <div className="font-serif italic text-4xl text-softwhite group-hover:text-indigo-500 transition-colors">VisionCraft Studio</div>
-           <p className="text-coolgray text-[10px] font-black tracking-[1em] uppercase">&copy; 2025 VisionCraft Studio &bull; Precision Visualization Engine</p>
+          <div className="font-serif italic text-4xl text-softwhite group-hover:text-indigo-500 transition-colors">VisionCraft Studio</div>
+          <p className="text-coolgray text-[10px] font-black tracking-[1em] uppercase">&copy; 2025 VisionCraft Studio &bull; Precision Visualization Engine</p>
         </div>
       </footer>
 

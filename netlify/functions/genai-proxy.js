@@ -14,6 +14,11 @@ exports.handler = async function (event) {
         const body = event.body ? JSON.parse(event.body) : {};
         const { action, payload } = body;
 
+        // lightweight health check for front-end to detect server readiness
+        if (action === 'ping') {
+            return { statusCode: 200, body: JSON.stringify({ ok: true, mode: isDevFallback ? 'dev' : 'server' }) };
+        }
+
         if (action === 'generateScenarios') {
             const { assetBase64, brief, category } = payload;
             if (isDevFallback) {
