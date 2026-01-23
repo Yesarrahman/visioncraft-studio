@@ -1,18 +1,31 @@
 exports.handler = async function (event) {
     try {
-        const { default: genai } = await import('@google/genai');
-        const { GoogleGenAI, Type } = genai;
         const apiKey = process.env.API_KEY;
-        if (!apiKey) {
-            return { statusCode: 500, body: JSON.stringify({ error: 'Missing server API_KEY' }) };
+        const isDevFallback = !apiKey;
+        if (isDevFallback) console.warn('API_KEY not set — running in development fallback mode');
+
+        let GoogleGenAI, Type, ai;
+        if (!isDevFallback) {
+            const { default: genai } = await import('@google/genai');
+            ({ GoogleGenAI, Type } = genai);
+            ai = new GoogleGenAI({ apiKey });
         }
 
-        const ai = new GoogleGenAI({ apiKey });
         const body = event.body ? JSON.parse(event.body) : {};
         const { action, payload } = body;
 
         if (action === 'generateScenarios') {
             const { assetBase64, brief, category } = payload;
+            if (isDevFallback) {
+                // Return deterministic sample scenarios for local/dev environments
+                const samples = [
+                    `Luxurious studio-lit setting with dramatic chiaroscuro highlighting the ${category} piece.`,
+                    `Ultra-minimal gallery space with soft natural window light and reflective surfaces.`,
+                    `Opulent cinematic interior with warm gold accents and shallow depth-of-field.`
+                ];
+                return { statusCode: 200, body: JSON.stringify({ scenarios: samples }) };
+            }
+
             const cleanedBase64 = (assetBase64 || '').replace(/^data:image\/\w+;base64,/, '');
 
             const systemInstructions = {
@@ -49,6 +62,15 @@ exports.handler = async function (event) {
         if (action === 'generateModelImages') {
             const { base64, scenarios, category } = payload;
             const results = [];
+            if (isDevFallback) {
+                // Return placeholder images (single-pixel transparent PNG) for dev
+                const placeholder = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==';
+                for (const scenario of (scenarios || [])) {
+                    results.push({ url: `data:image/png;base64,${placeholder}`, scenario, base64: placeholder });
+                }
+                return { statusCode: 200, body: JSON.stringify({ results }) };
+            }
+
             const cleanedBase64 = (base64 || '').replace(/^data:image\/\w+;base64,/, '');
 
             for (const scenario of scenarios || []) {
@@ -85,6 +107,11 @@ exports.handler = async function (event) {
 
         if (action === 'editImage') {
             const { originalBase64, editPrompt } = payload;
+            if (isDevFallback) {
+                // In dev mode just echo the original image back
+                return { statusCode: 200, body: JSON.stringify({ image: originalBase64 }) };
+            }
+
             const cleanedBase64 = (originalBase64 || '').replace(/^data:image\/\w+;base64,/, '');
             const prompt = `REFINE RENDER: ${editPrompt}. Maintain 4K resolution and high-fidelity textures.`;
 

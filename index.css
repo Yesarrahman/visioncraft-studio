@@ -1,0 +1,17 @@
+/* Minimal stylesheet to avoid 404 and provide base styles */
+html, body, #root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background-color: #08080A;
+  color: #F8F9FA;
+}
+.app-container {
+  padding: 24px;
+}
+
+/* small helper classes */
+.hidden { display: none !important; }
+.center { display:flex; align-items:center; justify-content:center; }
