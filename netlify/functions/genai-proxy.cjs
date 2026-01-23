@@ -44,8 +44,10 @@ module.exports.handler = async function (event) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ prompt: { text: prompt }, temperature: 0.2 })
                 });
-                const j = await resp.json();
-                const content = j?.candidates?.[0]?.content || j?.output?.[0]?.content || '';
+                const rawText = await resp.text();
+                let j = null;
+                try { j = JSON.parse(rawText); } catch (e) { /* keep rawText for debugging */ }
+                const content = j?.candidates?.[0]?.content || j?.output?.[0]?.content || (typeof rawText === 'string' ? rawText : '');
                 // Try to extract JSON from content
                 let scenarios = [];
                 try {
@@ -63,7 +65,8 @@ module.exports.handler = async function (event) {
                 return { statusCode: 200, body: JSON.stringify({ scenarios }) };
             } catch (err) {
                 console.error('Text generation error', err);
-                return { statusCode: 500, body: JSON.stringify({ error: 'Text generation failed', details: String(err) }) };
+                // include raw response if available for debugging
+                return { statusCode: 502, body: JSON.stringify({ error: 'Text generation failed', details: String(err), raw: typeof rawText !== 'undefined' ? rawText : null }) };
             }
         }
 
